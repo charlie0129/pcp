@@ -29,10 +29,13 @@ func runCopy(cmd *cobra.Command, args []string) error {
 	progressDone := make(chan struct{})
 	if term.IsTerminal(int(os.Stderr.Fd())) {
 		progressBar = progress.New(os.Stderr, 100*time.Millisecond)
+
+		// So we can print out summary.
 		defer func() {
 			cancel()
 			<-progressDone
 		}()
+
 		go func() {
 			defer close(progressDone)
 			progressBar.Start(ctx)

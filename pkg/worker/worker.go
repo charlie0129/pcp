@@ -60,7 +60,7 @@ func (w *Worker) Start(
 	// Start goroutines to handle the concurrent copying of chunks.
 	eg, ctx := errgroup.WithContext(ctx)
 
-	// This goroutine will read files from the incomingFiles channel,
+	// Slicer: This goroutine will read files from the incomingFiles channel,
 	// slice them into chunks, and send those chunks to the outChunks channel.
 	eg.Go(func() error {
 		defer close(chunks)   // Ensure outChunks is closed when done.
@@ -81,7 +81,8 @@ func (w *Worker) Start(
 		return nil
 	})
 
-	// Start multiple goroutines to copy chunks concurrently.
+	// Copier: Start multiple goroutines to copy chunks concurrently.
+	// Chunks can be the same file or different files.
 	for range w.conf.MaxConcurrentChunks {
 		eg.Go(func() error {
 			// Local copy buffer, avoid reallocations.
@@ -136,10 +137,10 @@ func (w *Worker) copyChunk(
 	copyBuffer []byte,
 	rateLimiter *rate.Limiter,
 ) error {
-	needCloseFile := false
+	shouldCloseFile := false
 
 	defer func() {
-		if needCloseFile {
+		if shouldCloseFile {
 			err, closed := chunk.File.TryClose()
 			// We only close a file when it has been fully copied (or error).
 			// Decrement the filesBeingCopied counter only if the file was closed.
@@ -154,7 +155,7 @@ func (w *Worker) copyChunk(
 
 	select {
 	case <-ctx.Done():
-		needCloseFile = true
+		shouldCloseFile = true
 		return ctx.Err()
 	default:
 	}
@@ -165,7 +166,7 @@ func (w *Worker) copyChunk(
 		w.filesBeingCopied.Add(1)
 	}
 	if err != nil {
-		needCloseFile = true
+		shouldCloseFile = true
 		return errors.Wrapf(err, "failed to open file for copying")
 	}
 
@@ -175,13 +176,13 @@ func (w *Worker) copyChunk(
 	err = chunk.File.CopyChunk(ctx, chunk.Index, copyBuffer, rateLimiter, w.updateBytesCopied)
 	if err != nil {
 		// Any error during copying means the whole copy failed, so we need to close the file.
-		needCloseFile = true
+		shouldCloseFile = true
 		return errors.Wrapf(err, "failed to copy chunk %d of file %s", chunk.Index, chunk.File.info.SourcePath)
 	}
 
 	if chunk.File.AllChunksCopied() {
 		// If all chunks are copied, we can close the file.
-		needCloseFile = true
+		shouldCloseFile = true
 		// Consider this file as fully copied.
 		w.filesCopied.Add(1)
 		logger := w.logger.With().Str("source", chunk.File.info.SourcePath).
@@ -189,6 +190,8 @@ func (w *Worker) copyChunk(
 			Int64("size", chunk.File.info.FileInfo.Size()).
 			Str("sizeHuman", size.FormatBytes(chunk.File.info.FileInfo.Size())).Logger()
 		logger.Debug().Msg("Copied file")
+
+		// Only chown after a successful copy.
 		if w.conf.PreserveOwner {
 			stat_t, ok := chunk.File.info.FileInfo.Sys().(*syscall.Stat_t)
 			if !ok {

@@ -207,6 +207,8 @@ func (l *Lister) sendFileJob(
 
 func (l *Lister) createDir(ctx context.Context, dest string, info os.FileInfo) error {
 	// We must create it immediately, so the workers can copy files into it.
+	// Do not send it to the listedFiles channel, because the workers may
+	// not create it in time.
 	select {
 	case <-ctx.Done():
 		return ctx.Err()

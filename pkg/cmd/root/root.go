@@ -12,10 +12,10 @@ var listerConfig = lister.Config{}
 
 // Worker config
 var (
-	maxConcurrentChunks   = 32
-	maxConcurrentSymlinks = 32
+	maxConcurrentChunks   = 16
+	maxConcurrentSymlinks = 16
 	chunkSize             = "4m"
-	blockSize             = "256k"
+	blockSize             = "1m"
 )
 
 var (

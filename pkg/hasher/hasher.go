@@ -18,6 +18,7 @@ import (
 	"github.com/charlie0129/pcp/pkg/utils/progress"
 )
 
+// HashOne computes the SHA-256 hash of a single file.
 func HashOne(
 	ctx context.Context,
 	copyBuffer []byte,
@@ -64,6 +65,10 @@ func New(config Config, logger zerolog.Logger) *Hasher {
 	}
 }
 
+// Start starts the hasher, which will hash files from the provided channel.
+//
+// It returns error if any of the files have mismatched hashes.
+//
 // fileRateLimiter is shared between src and dst hashers, so you need to
 // double the limit if you want to limit the rate of both source and destination.
 func (h *Hasher) Start(
