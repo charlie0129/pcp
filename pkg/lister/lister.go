@@ -231,7 +231,7 @@ func (l *Lister) createDir(ctx context.Context, dest string, info os.FileInfo) e
 	}
 
 	if l.conf.PreserveOwner {
-		stat_t, ok := info.Sys().(syscall.Stat_t)
+		stat_t, ok := info.Sys().(*syscall.Stat_t)
 		if !ok {
 			return errors.New("failed to preserve owner: no stat_t")
 		}

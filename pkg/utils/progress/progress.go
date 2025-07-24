@@ -130,11 +130,11 @@ func (p *Progress) formatStats() string {
 	timeDiff := time.Since(p.lastUpdated)
 	timeDiffSeconds := timeDiff.Seconds()
 
-	ret := fmt.Sprintf("%s, at %s/s | %d %s, at %s/s | %s IOPS | Processing %s %s",
+	ret := fmt.Sprintf("%s, at %s/s | %s %s, at %s/s | %s IOPS | Processing %s %s",
 		size.FormatBytes(p.stats.BytesProcessed),
 		size.FormatBytes(int64(float64(p.stats.BytesProcessed-p.lastStats.BytesProcessed)/timeDiffSeconds)),
 		//
-		p.stats.FilesProcessed,
+		size.FormatNumber(p.stats.FilesProcessed),
 		singularOrPlural(p.stats.FilesProcessed, "file", "files"),
 		size.FormatNumber(int64(float64(p.stats.FilesProcessed-p.lastStats.FilesProcessed)/timeDiffSeconds)),
 		//

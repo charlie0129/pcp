@@ -222,8 +222,7 @@ func (f *File) CopyChunk(
 	rateLimiter *rate.Limiter,
 	progressListener func(int64, int64),
 ) error {
-	// Early exit. Avoid opening files again after the defer has closed
-	// the file descriptors in case a context cancellation.
+	// Early exit in case a context cancellation.
 	select {
 	case <-ctx.Done():
 		return ctx.Err()

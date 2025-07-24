@@ -22,6 +22,7 @@ var (
 	transferRateLimitStr string
 	fileRateLimitStr     string
 	force                bool
+	preserveOwner        bool
 )
 
 func NewCommand() *cobra.Command {
@@ -58,7 +59,6 @@ Common source and destination file handling rules:
 
 	// Lister
 	f.BoolVar(&listerConfig.FollowSymlinks, "follow-symlinks", false, "Copy files pointed to by symlinks instead of the symlinks themselves")
-	f.BoolVar(&listerConfig.PreserveOwner, "preserve-owner", false, "Preserve file owner (requires root)")
 	f.BoolVar(&listerConfig.IgnoreWalkErrors, "ignore-walk-errors", false, "Ignore errors while walking directories (e.g., permission denied)")
 
 	// Worker
@@ -69,6 +69,8 @@ Common source and destination file handling rules:
 
 	f.StringVar(&transferRateLimitStr, "transfer-rate-limit", "", "Limit bytes copied per second (e.g., 1m, 500k)")
 	f.StringVar(&fileRateLimitStr, "file-rate-limit", "", "Limit files copied per second (e.g., 10, 1k)")
+
+	f.BoolVar(&preserveOwner, "preserve-owner", preserveOwner, "Preserve original UID and GID (requires root)")
 
 	pf := cmd.PersistentFlags()
 	pf.CountVarP(&log.Verbosity, "verbose", "v", "Enable verbose output (-v for debug, -vv for trace)")

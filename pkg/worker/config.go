@@ -10,6 +10,7 @@ type Config struct {
 	ChunkSize             int64
 	BlockSize             int
 	Force                 bool
+	PreserveOwner         bool
 }
 
 func (c *Config) Validate() error {

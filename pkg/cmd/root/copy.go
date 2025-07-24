@@ -48,6 +48,7 @@ func runCopy(cmd *cobra.Command, args []string) error {
 	listerConfig.SourcePaths = args[:len(args)-1]
 	listerConfig.DestinationPath = args[len(args)-1]
 	listerConfig.Force = force
+	listerConfig.PreserveOwner = preserveOwner
 	err := listerConfig.Validate()
 	if err != nil {
 		return err
@@ -66,6 +67,7 @@ func runCopy(cmd *cobra.Command, args []string) error {
 		ChunkSize:             size.MustParse(chunkSize),
 		BlockSize:             int(size.MustParse(blockSize)),
 		Force:                 force,
+		PreserveOwner:         preserveOwner,
 	}
 	err = workerConfig.Validate()
 	if err != nil {

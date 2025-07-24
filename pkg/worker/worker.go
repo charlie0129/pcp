@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"sync/atomic"
+	"syscall"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -183,12 +184,22 @@ func (w *Worker) copyChunk(
 		needCloseFile = true
 		// Consider this file as fully copied.
 		w.filesCopied.Add(1)
-		w.logger.Debug().
-			Str("source", chunk.File.info.SourcePath).
+		logger := w.logger.With().Str("source", chunk.File.info.SourcePath).
 			Str("destination", chunk.File.info.DestinationPath).
 			Int64("size", chunk.File.info.FileInfo.Size()).
-			Str("sizeHuman", size.FormatBytes(chunk.File.info.FileInfo.Size())).
-			Msg("Copied file")
+			Str("sizeHuman", size.FormatBytes(chunk.File.info.FileInfo.Size())).Logger()
+		logger.Debug().Msg("Copied file")
+		if w.conf.PreserveOwner {
+			stat_t, ok := chunk.File.info.FileInfo.Sys().(*syscall.Stat_t)
+			if !ok {
+				return errors.New("failed to preserve owner: no stat_t")
+			}
+			err := os.Chown(chunk.File.info.DestinationPath, int(stat_t.Uid), int(stat_t.Gid))
+			if err != nil {
+				return errors.Wrapf(err, "failed to preserve owner for file %s", chunk.File.info.DestinationPath)
+			}
+			w.logger.Debug().Uint32("uid", stat_t.Uid).Uint32("gid", stat_t.Gid).Msg("Chowned file to original owner")
+		}
 	}
 
 	return nil
