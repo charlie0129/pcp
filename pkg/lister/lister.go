@@ -155,6 +155,15 @@ func (l *Lister) walkDir(
 			dstPath = filepath.Join(l.conf.DestinationPath, relPath) // /c/b
 		}
 
+		if srcPath == dstPath {
+			// If the source and destination paths are the same, skip it.
+			// This can happen when the source is a single file and the destination
+			// is a directory, or when the source is a directory, and we are copying
+			// it onto itself.
+			l.logger.Warn().Str("path", srcPath).Msg("Skipping source path that is the same as destination")
+			return nil
+		}
+
 		// Handle symlinks
 		if info.Mode()&os.ModeSymlink != 0 {
 			if !l.conf.FollowSymlinks {
@@ -174,7 +183,7 @@ func (l *Lister) walkDir(
 			// Directory must be created as soon as possible, because we the
 			// workers may first try to copy the file and then find out
 			// that the directory does not exist.
-			return l.createDir(ctx, dstPath, info)
+			return l.createDir(ctx, srcPath, dstPath, info)
 		}
 
 		return l.sendFileJob(ctx, listedFiles, srcPath, dstPath, info)
@@ -200,12 +209,13 @@ func (l *Lister) sendFileJob(
 	case listedFiles <- job:
 		l.logger.Trace().Str("source", source).Str("destination", dest).
 			Int64("size", info.Size()).Str("sizeHuman", size.FormatBytes(info.Size())).
+			Str("mode", info.Mode().String()).
 			Msg("Discovered regular file")
 		return nil
 	}
 }
 
-func (l *Lister) createDir(ctx context.Context, dest string, info os.FileInfo) error {
+func (l *Lister) createDir(ctx context.Context, src, dest string, info os.FileInfo) error {
 	// We must create it immediately, so the workers can copy files into it.
 	// Do not send it to the listedFiles channel, because the workers may
 	// not create it in time.
@@ -215,32 +225,63 @@ func (l *Lister) createDir(ctx context.Context, dest string, info os.FileInfo) e
 	default:
 	}
 
-	l.logger.Debug().Str("path", dest).Msg("Creating directory")
+	l.logger.Trace().Str("source", src).Str("destination", dest).
+		Str("mode", info.Mode().String()).
+		Msg("Discovered directory, creating it in destination")
 
-	if l.conf.Force {
-		_, err := os.Lstat(dest)
-		if err == nil {
-			// If the destination already exists, delete it.
-			err = os.RemoveAll(dest)
-			if err != nil {
-				return errors.Wrapf(err, "failed to remove existing file or directory %s", dest)
+	stat, err := os.Lstat(dest)
+	dstExists := !os.IsNotExist(err)
+	if err != nil && dstExists { // some other error than NotExist
+		return errors.Wrapf(err, "failed to lstat destination %s", dest)
+	}
+	dstIsDir := dstExists && stat.IsDir()
+
+	// NotForce:
+	//    notexist: create with mode, chown
+	//    exists&&isdir: error out
+	//    exists&&other: error out
+	// Force:
+	//    notexist: create with mode, chown
+	//    exists&&isdir: keep, chmod, chown
+	//    exists&&other: delete, create with mode, chown
+	if !l.conf.Force { // Not force
+		if dstExists {
+			return errors.Errorf("destination %s already exists, use --force to overwrite", dest)
+		}
+		if err := os.Mkdir(dest, info.Mode()); err != nil {
+			return errors.Wrapf(err, "failed to create directory %s", dest)
+		}
+		l.logger.Debug().Str("path", dest).Msg("Created directory")
+	} else { // l.conf.Force is true
+		if dstExists && !dstIsDir {
+			if err := os.Remove(dest); err != nil {
+				return errors.Wrapf(err, "failed to remove existing file %s", dest)
+			}
+			dstExists = false // It's gone now
+		}
+
+		if !dstExists {
+			if err := os.Mkdir(dest, info.Mode()); err != nil {
+				return errors.Wrapf(err, "failed to create directory %s", dest)
+			}
+			l.logger.Debug().Str("path", dest).Msg("Created directory")
+		} else { // dstExists && dstIsDir
+			if err := os.Chmod(dest, info.Mode().Perm()); err != nil {
+				return errors.Wrapf(err, "failed to chmod existing directory %s", dest)
 			}
 		}
 	}
 
-	if err := os.Mkdir(dest, info.Mode()); err != nil {
-		return errors.Wrap(err, "failed to create directory")
-	}
-
 	if l.conf.PreserveOwner {
-		stat_t, ok := info.Sys().(*syscall.Stat_t)
+		statT, ok := info.Sys().(*syscall.Stat_t)
 		if !ok {
 			return errors.New("failed to preserve owner: no stat_t")
 		}
-		err := os.Chown(dest, int(stat_t.Uid), int(stat_t.Gid))
+		err := os.Chown(dest, int(statT.Uid), int(statT.Gid))
 		if err != nil {
-			return errors.Wrapf(err, "failed to preserve owner for file %s", dest)
+			return errors.Wrapf(err, "failed to preserve owner for directory %s", dest)
 		}
+		l.logger.Debug().Uint32("uid", statT.Uid).Uint32("gid", statT.Gid).Msg("Chowned directory to original owner")
 	}
 
 	return nil
@@ -269,7 +310,9 @@ func (l *Lister) sendSymlinkJob(
 	case <-ctx.Done():
 		return ctx.Err()
 	case listedFiles <- job:
-		l.logger.Trace().Str("source", source).Str("target", target).Str("destination", dest).
+		l.logger.Trace().Str("source", source).Str("target", target).
+			Str("destination", dest).
+			Str("mode", info.Mode().String()).
 			Msg("Discovered symlink")
 		return nil
 	}

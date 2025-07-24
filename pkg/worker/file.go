@@ -107,16 +107,20 @@ func (f *File) open() (error, bool) {
 	}
 
 	if f.dstFD == nil {
-		flags := os.O_RDWR | os.O_CREATE
+		flags := os.O_WRONLY | os.O_CREATE // Write only.
+
 		if f.force {
-			flags |= os.O_TRUNC
+			flags |= os.O_TRUNC // Truncate the file if it exists.
 		} else {
-			flags |= os.O_EXCL
+			flags |= os.O_EXCL // Fail if the file already exists.
 		}
 
 		dstFD, err := os.OpenFile(f.info.DestinationPath, flags, f.info.FileInfo.Mode()) // WO
 		if err != nil {
 			hasError = true
+			if errors.Is(err, os.ErrExist) {
+				return errors.Errorf("destination file %s already exists, use --force to overwrite", f.info.DestinationPath), false
+			}
 			return errors.Wrapf(err, "failed to open for writing"), false
 		}
 

@@ -101,7 +101,7 @@ func (w *Worker) Start(
 		})
 	}
 
-	// Start multiple goroutines to handle symlinks concurrently.
+	// Copier: Start multiple goroutines to handle symlinks concurrently.
 	for range w.conf.MaxConcurrentSymlinks {
 		eg.Go(func() error {
 			var err error
@@ -112,9 +112,36 @@ func (w *Worker) Start(
 				default:
 				}
 
-				err = os.Symlink(l.SymlinkTarget, l.DestinationPath)
+				_, err = os.Lstat(l.DestinationPath)
+				if err != nil && !errors.Is(err, os.ErrNotExist) {
+					return errors.Wrapf(err, "failed to stat symlink %s -> %s", l.DestinationPath, l.SymlinkTarget)
+				}
+				// Symlink already exists, delete it.
+				if err == nil {
+					if w.conf.Force {
+						err := os.Remove(l.DestinationPath)
+						if err != nil {
+							return errors.Wrapf(err, "failed to remove existing symlink %s", l.DestinationPath)
+						}
+					}
+				}
+
+				// Now it does not exist, we can create it.
+				err := os.Symlink(l.SymlinkTarget, l.DestinationPath)
 				if err != nil {
 					return errors.Wrapf(err, "failed to create symlink %s -> %s", l.DestinationPath, l.SymlinkTarget)
+				}
+
+				if w.conf.PreserveOwner {
+					stat_t, ok := l.FileInfo.Sys().(*syscall.Stat_t)
+					if !ok {
+						return errors.New("failed to preserve owner: no stat_t")
+					}
+					err := os.Lchown(l.DestinationPath, int(stat_t.Uid), int(stat_t.Gid))
+					if err != nil {
+						return errors.Wrapf(err, "failed to preserve owner for symlink %s", l.DestinationPath)
+					}
+					w.logger.Debug().Uint32("uid", stat_t.Uid).Uint32("gid", stat_t.Gid).Msg("Chowned symlink to original owner")
 				}
 			}
 			return nil
