@@ -34,6 +34,8 @@ Do not use `pcp` in these situations:
 - **Rate limiting**: Control transfer speed and file processing rate
 - **Progress tracking**: Real-time progress display with speed statistics
 - **Verification**: Optional SHA256 checksum verification
+- **User-friendly logs**: Logs are structured and can easily be parsed by human or machines. If stderr is a terminal,
+  logs are colorized to optimize human readability. Otherwise, logs are written in JSON format for machine parsing.
 
 ## Building
 

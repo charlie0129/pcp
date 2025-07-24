@@ -99,12 +99,12 @@ out:
 
 		_, _ = fmt.Fprintf(p.out, `
 Summary:
-    Run time:        %s
-    Bytes processed: %s
-    Transfer speed:  %s/s
-    Files processed: %s
-    File proc speed: %s/s
-    IO speed:        %s IOPS
+    Duration:           %s
+    Total size:         %s
+    Transfer speed:     %s/s
+    File count:         %s
+    File transfer rate: %s/s
+    IO rate:            %sIOPS
 `, runTime.Round(time.Millisecond).String(),
 			size.FormatBytes(p.stats.BytesProcessed),
 			size.FormatBytes(int64(float64(p.stats.BytesProcessed)/runTime.Seconds())),

@@ -73,6 +73,11 @@ Common source and destination file handling rules:
             destination (/b).
 
   All other cases are invalid usages.
+
+Log format:
+  Logs are structured and can easily be parsed by human or machines. If stderr 
+  is a terminal, logs are colorized to optimize human readability. Otherwise, 
+  logs are written in JSON format for machine parsing.
 `,
 		Example: `  # Simple copy
   $ pcp /path/to/source /path/to/destination
