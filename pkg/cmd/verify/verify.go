@@ -28,7 +28,6 @@ var (
 )
 
 var (
-	verbosity            int
 	transferRateLimitStr string
 	fileRateLimitStr     string
 )

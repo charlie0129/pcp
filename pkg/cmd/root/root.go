@@ -115,7 +115,7 @@ Log format:
 	f.StringVar(&transferRateLimitStr, "transfer-rate-limit", "", "Limit bytes copied per second (e.g., 1m, 500k)")
 	f.StringVar(&fileRateLimitStr, "file-rate-limit", "", "Limit files copied per second (e.g., 10, 1k)")
 
-	f.BoolVar(&preserveOwner, "preserve-owner", preserveOwner, "Preserve original UID and GID (requires root)")
+	f.BoolVarP(&preserveOwner, "preserve-owner", "p", preserveOwner, "Preserve original UID and GID (requires root)")
 
 	pf := cmd.PersistentFlags()
 	pf.CountVarP(&log.Verbosity, "verbose", "v", "Enable verbose output (-v for debug, -vv for trace)")
