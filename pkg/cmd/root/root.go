@@ -15,7 +15,7 @@ var (
 	maxConcurrentChunks   = 16
 	maxConcurrentSymlinks = 16
 	chunkSize             = "4m"
-	blockSize             = "1m"
+	blockSize             = "256k"
 )
 
 var (
@@ -100,11 +100,11 @@ Log format:
 
 	f := cmd.Flags()
 
-	f.BoolVarP(&force, "force", "f", false, "Force copy even if file already exists")
+	f.BoolVarP(&force, "force", "f", force, "Force copy even if file already exists")
 
 	// Lister
-	f.BoolVar(&listerConfig.FollowSymlinks, "follow-symlinks", false, "Copy files pointed to by symlinks instead of the symlinks themselves")
-	f.BoolVar(&listerConfig.IgnoreWalkErrors, "ignore-walk-errors", false, "Ignore errors while walking directories (e.g., permission denied)")
+	f.BoolVar(&listerConfig.FollowSymlinks, "follow-symlinks", listerConfig.FollowSymlinks, "Copy files pointed to by symlinks instead of the symlinks themselves")
+	f.BoolVar(&listerConfig.IgnoreWalkErrors, "ignore-walk-errors", listerConfig.IgnoreWalkErrors, "Ignore errors while walking directories (e.g., permission denied)")
 
 	// Worker
 	f.IntVarP(&maxConcurrentChunks, "concurrent-chunks", "c", maxConcurrentChunks, "Maximum number of concurrently copied chunks")
