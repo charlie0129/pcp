@@ -230,6 +230,12 @@ func (w *Worker) copyChunk(
 			}
 			w.logger.Debug().Uint32("uid", stat_t.Uid).Uint32("gid", stat_t.Gid).Msg("Chowned file to original owner")
 		}
+
+		// Preserve modification time.
+		err = os.Chtimes(chunk.File.info.DestinationPath, chunk.File.info.FileInfo.ModTime(), chunk.File.info.FileInfo.ModTime())
+		if err != nil {
+			return errors.Wrapf(err, "failed to preserve modification time for file %s", chunk.File.info.DestinationPath)
+		}
 	}
 
 	return nil
