@@ -84,13 +84,12 @@ files.
 ## Performance Tuning
 
 - `--block-size`: Sets the number of bytes of each IO operation. Increasing it to several megabytes can generally
-  improve performance (the default value of 1MiB is fine for most people), especially on
+  improve performance, especially on
   mechanical disks. It reduces the number of IO operations. Do not make it too large. Larger values like several hundred
   megabytes does not make sense. This must be smaller or equal to `--chunk-size`.
 - `--chunk-size`: Sets how large the chunks of a file are sliced into. If you are using a network of very high latency (
   like several hundreds of milliseconds), you can increase this so the there are fewer chunks to reduce the number of
-  new connections
-  created.
+  new connections created, provided that the file is large enough to satisfy `--concurrent-chunks`.
 - `--concurrent-chunks`: Sets how many chunks can be copied concurrently. Increasing this can improve performance
   on high latency filesystems, but it can also increase the load on the filesystem and network.
 
